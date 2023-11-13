@@ -180,7 +180,6 @@ endif
 
 args = [
   '-DHAVE_CONFIG_H',
-  '-DKEX_Q2GAME_DYNAMIC',
   '-DKEX_Q2GAME_EXPORTS',
   '-DNO_FMT_SOURCE',
 ]

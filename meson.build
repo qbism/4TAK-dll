@@ -229,7 +229,7 @@ deps = [
   dependency('jsoncpp', default_options: fallback_opt),
 ]
 
-shared_library('game_' + cpu, src,
+game_dll = shared_library('game_' + cpu, src,
   name_prefix:           '',
   gnu_symbol_visibility: 'hidden',
   dependencies:          deps,

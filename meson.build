@@ -186,7 +186,7 @@ args = [
 link_args = []
 
 if cpp.get_argument_syntax() == 'gcc'
-  if x86
+  if not meson.is_subproject() and x86
     add_global_arguments('-msse2', '-mfpmath=sse', language: 'cpp')
   endif
 

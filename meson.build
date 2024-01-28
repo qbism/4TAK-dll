@@ -206,7 +206,7 @@ if cpp.get_argument_syntax() == 'gcc'
       '-static-libgcc',
       '-static-libstdc++',
     ]
-    if cpu == 'x86_64'
+    if cpu == 'x64'
       link_args += '-Wl,--high-entropy-va,--image-base=0x180000000'
     endif
   endif

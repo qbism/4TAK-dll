@@ -222,7 +222,7 @@ endif
 add_project_arguments(args, language: 'cpp')
 add_project_link_arguments(link_args, language: 'cpp')
 
-fallback_opt = ['default_library=static', ]
+fallback_opt = ['default_library=static', 'b_vscrt=static_from_buildtype', ]
 
 deps = [
   dependency('fmt', default_options: fallback_opt),

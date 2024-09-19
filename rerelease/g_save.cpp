@@ -272,7 +272,7 @@ struct save_struct_t
 #define FIELD(f) SAVE_FIELD(DECLARE_SAVE_STRUCT, f)
 
 template<typename T, typename T2 = void>
-struct save_type_deducer
+struct save_type_deducer_error
 {
 	static constexpr save_field_t get_save_type(const char *name, size_t offset)
 	{
@@ -280,6 +280,15 @@ struct save_type_deducer
 			!std::is_same_v<T2, void>,
 			"Can't automatically deduce type for save; implement save_type_deducer or use an explicit FIELD_ macro.");
 		return {};
+	}
+};
+
+template<typename T, typename T2 = void>
+struct save_type_deducer
+{
+	static constexpr save_field_t get_save_type(const char *name, size_t offset)
+	{
+		return save_type_deducer_error<T, T2>::get_save_type(name, offset);
 	}
 };
 
@@ -310,7 +319,7 @@ struct save_type_deducer<T, typename std::enable_if_t<std::is_integral_v<T> && !
 			else if constexpr (sizeof(T) == 8)
 				return { name, offset, { ST_INT64 } };
 			else
-				return save_type_deducer<void, void>::get_save_type(name, offset);
+				return save_type_deducer_error<T>::get_save_type(name, offset);
 		}
 		else
 		{
@@ -323,7 +332,7 @@ struct save_type_deducer<T, typename std::enable_if_t<std::is_integral_v<T> && !
 			else if constexpr (sizeof(T) == 8)
 				return { name, offset, { ST_UINT64 } };
 			else
-				return save_type_deducer<void, void>::get_save_type(name, offset);
+				return save_type_deducer_error<T>::get_save_type(name, offset);
 		}
 	}
 };
@@ -339,7 +348,7 @@ struct save_type_deducer<T, typename std::enable_if_t<std::is_floating_point_v<T
 		else if constexpr (sizeof(T) == 8)
 			return { name, offset, { ST_DOUBLE } };
 		else
-			return save_type_deducer<void, void>::get_save_type(name, offset);
+			return save_type_deducer_error<T>::get_save_type(name, offset);
 	}
 };
 

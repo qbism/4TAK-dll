@@ -196,6 +196,7 @@ if cpp.get_argument_syntax() == 'gcc'
     '-Wno-narrowing',
     '-Wno-sign-compare',
     '-Wpointer-arith',
+    '-Wno-array-bounds', # produces false positive on GCC 13
   ]
 
   args += cpp.get_supported_arguments(test_args)

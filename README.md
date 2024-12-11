@@ -1298,6 +1298,8 @@ The Medic and Medic Commander's Hyperblaster firing animation sweep.
 
 As documented in [WritePosition](#writeposition), WritePos now writes full float precision, so ReadPos has to read full float.
 
+_Except_ for protocol 2022 (as used in the demos): the positions have been written in the "classic" 12.3 fixed point format.
+
 ### TE_SPLASH (10)
 
 The "color/splash" enumeration accepts a new value:
@@ -1381,6 +1383,8 @@ struct sndchan_t
 - SND_LARGE_ENT (bit 6)
 
 Note that `SND_POS` is **always** set. This is to fix a legacy bug where sounds played on entities outside of your PVS will play at the origin instead of their real location. The client should pick the real position if the entity is in their frame, but otherwise fall back to the sound packets' position.
+
+_Note:_ With protocol 2022 (as used in the demos) the positions have been written in the "classic" 12.3 fixed point format.
 
 ## (packet, server -> client) svc_print (10)
 
@@ -1468,7 +1472,7 @@ Then, back to `svc_frame` data:
 	viewoffset_x = ReadShort() * (1.f / 16.f)
 	viewoffset_y = ReadShort() * (1.f / 16.f)
 	viewoffset_z = ReadShort() * (1.f / 16.f)
-	viewheight = ReadChar() // note: not in protocol 2022
+	viewheight = ReadChar()
 ```
 - [if flags & PS_VIEWANGLES] ReadPos (viewangles)
 - [if flags & PS_KICKANGLES]
@@ -1639,6 +1643,7 @@ ReadByte(modelindex4)
 ```cpp
 // note: for the protocol in the demos (2022), if `solid` is zero,
 // then the following reads are lower precision, using ReadShort() * (1.f / 8.f)
+// If `solid` was not sent use any previously transmitted value.
 [if bits & U_ORIGIN1] ReadFloat(origin_x)
 [if bits & U_ORIGIN2] ReadFloat(origin_y)
 [if bits & U_ORIGIN3] ReadFloat(origin_z)
@@ -1842,7 +1847,7 @@ Spawns the Compass help path effect at the given location.
 - ReadPos (pos)
 - ReadDir (dir)
 
-## (packet, server -> client) svc_achievement (32)
+## (packet, server -> client) svc_achievement (33)
 
 - ReadString (id)
 

@@ -617,7 +617,7 @@ bool SV_movestep(edict_t *ent, vec3_t move, bool relink)
 	edict_t *current_bad = nullptr;
 
 	// PMM - who cares about bad areas if you're dead?
-	if (ent->health > 0)
+	if ((ent->health > 0) && !(ent->flags & FL_PUSHABLE))
 	{
 		current_bad = CheckForBadArea(ent);
 		if (current_bad)
@@ -742,7 +742,7 @@ bool SV_movestep(edict_t *ent, vec3_t move, bool relink)
 			return true;
 		}
 		// [Paril-KEX] allow dead monsters to "fall" off of edges in their death animation
-		else if (!ent->spawnflags.has(SPAWNFLAG_MONSTER_SUPER_STEP) && ent->health > 0)
+		else if (!ent->spawnflags.has(SPAWNFLAG_MONSTER_SUPER_STEP) && ent->health > 0  && !(ent->flags & FL_PUSHABLE))
 			return false; // walked off an edge
 	}
 	
@@ -774,7 +774,7 @@ bool SV_movestep(edict_t *ent, vec3_t move, bool relink)
 
 	// PGM
 	//  PMM - don't bother with bad areas if we're dead
-	if (ent->health > 0)
+	if ((ent->health > 0) && ! (ent->flags & FL_PUSHABLE))
 	{
 		// use AI_BLOCKED to tell the calling layer that we're now mad at a tesla
 		new_bad = CheckForBadArea(ent);
@@ -816,7 +816,7 @@ bool SV_movestep(edict_t *ent, vec3_t move, bool relink)
 
 	if (!M_CheckBottom(ent))
 	{
-		if (ent->flags & FL_PARTIALGROUND)
+		if ((ent->flags & FL_PARTIALGROUND) ||  (ent->flags & FL_PUSHABLE))
 		{ // entity had floor mostly pulled out from underneath it
 			// and is trying to correct
 			if (relink)
@@ -849,7 +849,7 @@ bool SV_movestep(edict_t *ent, vec3_t move, bool relink)
 	// [Paril-KEX]
 	M_CheckGround(ent, G_GetClipMask(ent));
 
-	if (!ent->groundentity)
+	if ((!ent->groundentity) && !(ent->flags & FL_PUSHABLE))
 	{
 		// walked off an edge
 		ent->s.origin = oldorg;

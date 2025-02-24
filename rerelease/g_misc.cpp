@@ -1219,6 +1219,7 @@ void SP_misc_explobox(edict_t *self)
 	self->die = barrel_delay;
 	self->takedamage = true;
 	self->flags |= FL_TRAP;
+	self->flags |= FL_PUSHABLE;
 
 	self->touch = barrel_touch;
 

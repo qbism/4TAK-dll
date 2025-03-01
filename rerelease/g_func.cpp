@@ -2,6 +2,7 @@
 // Licensed under the GNU General Public License 2.0.
 #include "g_local.h"
 
+
 /*
 =========================================================
 
@@ -47,6 +48,222 @@ constexpr spawnflags_t SPAWNFLAG_DOOR_ROTATING_X_AXIS = 64_spawnflag;
 constexpr spawnflags_t SPAWNFLAG_DOOR_ROTATING_Y_AXIS = 128_spawnflag;
 constexpr spawnflags_t SPAWNFLAG_DOOR_ROTATING_INACTIVE = 0x10000_spawnflag; // Paril: moved to non-reserved
 constexpr spawnflags_t SPAWNFLAG_DOOR_ROTATING_SAFE_OPEN = 0x20000_spawnflag;
+
+
+// qb:  Lazarus movewith
+
+void set_child_movement(edict_t *self)
+{
+    edict_t *e;
+    edict_t	*parent;
+    vec3_t	forward, right, up;
+    vec3_t	angles, amove;
+    vec3_t	offset;
+    vec3_t	delta_angles;
+    bool	is_monster = true;
+
+    if (!self->inuse)
+        return;
+
+    e = self->movewith_next;
+    parent = self;
+    while (e != NULL)
+    {
+restart:
+        if (!e->inuse)
+            break;
+
+		delta_angles = self->s.angles - e->parent_attach_angles;
+        AngleVectors(delta_angles, forward, right, up);
+        right = -right;
+
+        // remove gibbed monsters from the chain
+        if (e->svflags & SVF_MONSTER)
+        {
+            if (e->health <= e->gib_health)
+            {
+                parent->movewith_next = e->movewith_next;
+                e = e->movewith_next;
+                if (e)
+                    goto restart;
+                else
+                    break;
+            }
+            is_monster = true;
+        }
+        else
+            is_monster = false;
+
+        // For all but func_button and func_door, move origin and match velocities
+        if (stricmp(e->classname, "func_door") && stricmp(e->classname, "func_button"))
+        {
+
+			e->s.origin = self->s.origin + (forward * e->movewith_offset[0]);
+			e->s.origin = e->s.origin + (right * e->movewith_offset[1]);
+			e->s.origin = e->s.origin + (up * e->movewith_offset[2]);
+         }
+
+        // If parent is spinning, add appropriate velocities
+        offset = e->s.origin - self->s.origin;
+        if (self->avelocity[PITCH] != 0)
+        {
+            e->velocity[2] -= offset[0] * self->avelocity[PITCH] * PIf / 180;
+            e->velocity[0] += offset[2] * self->avelocity[PITCH] * PIf / 180;
+        }
+        if (self->avelocity[YAW] != 0)
+        {
+            e->velocity[0] -= offset[1] * self->avelocity[YAW] * PIf / 180.;
+            e->velocity[1] += offset[0] * self->avelocity[YAW] * PIf / 180.;
+        }
+        if (self->avelocity[ROLL] != 0)
+        {
+            e->velocity[1] -= offset[2] * self->avelocity[ROLL] * PIf / 180;
+            e->velocity[2] += offset[1] * self->avelocity[ROLL] * PIf / 180;
+        }
+
+        amove = (self->avelocity * SERVER_TICK_RATE);
+
+        // Match angular velocities
+        if (!stricmp(e->classname, "func_rotating")) {
+            float cy, sy;
+            cy = cos((e->s.angles[1] - delta_angles[1]) * PIf / 180);
+            sy = sin((e->s.angles[1] - delta_angles[1]) * PIf / 180);
+            if (e->movedir[0] > 0) {
+                e->s.angles[1] = delta_angles[1];
+            } else if (e->movedir[1] > 0) {
+                e->s.angles[1] += amove[1];
+                e->s.angles[2] = delta_angles[2] * cy;
+                e->s.angles[0] = -delta_angles[2] * sy;
+            } else if (e->movedir[2] > 0) {
+                e->s.angles[1] = delta_angles[0] * -sy;
+            }
+        } else if (!is_monster) {
+            // Not a monster/actor. We want monsters/actors to be able to turn on
+            // their own.
+            if (!stricmp(e->classname, "turret_breach") || !stricmp(e->classname, "turret_base")) {
+                e->avelocity = self->avelocity;
+            } else if (!stricmp(e->classname, "func_door_rotating")) {
+                e->avelocity = self->avelocity;
+                e->pos1 = delta_angles;
+                e->pos2 = e->pos1 + (e->movedir * e->moveinfo.distance);
+                if (e->moveinfo.state == STATE_TOP)
+				e->s.angles = e->pos2;
+                else
+				e->s.angles = e->pos1;
+                e->moveinfo.start_origin = e->s.origin;
+                e->moveinfo.start_angles = e->pos1;
+                e->moveinfo.end_origin = e->s.origin;
+                e->moveinfo.end_angles = e->pos2;
+            } else if (e->solid == SOLID_BSP) {
+                // Brush models always start out with angles=0,0,0 (after
+                // G_SetMoveDir). Use more accuracy here
+                e->avelocity = self->avelocity;
+				e->s.angles = delta_angles;
+            } else if (e->movetype == MOVETYPE_NONE) {
+                e->avelocity = self->avelocity;
+                e->s.angles = delta_angles;
+            } else {
+                // For point entities, best we can do is apply a delta to
+                // the angles. This may result in foulups if anything
+                // gets blocked
+                e->s.angles = e->s.angles + amove;
+            }
+        }
+
+        // Special cases:
+        // Func_door/func_button and trigger fields
+        if ((!stricmp(e->classname, "func_door")) ||
+                (!stricmp(e->classname, "func_button")))
+        {
+
+            angles = e->s.angles + e->org_angles;
+            G_SetMovedir(angles, e->movedir);
+            e->pos1 = self->s.origin + (forward * e->movewith_offset[0]);
+            e->pos1 = e->pos1 + (right * e->movewith_offset[1]);
+			e->pos1 = e->pos1 + (up * e->movewith_offset[2]);
+			e->pos2 = e->pos1 + ( e->movedir * e->moveinfo.distance);
+            e->moveinfo.start_origin = e->pos1;
+			e->moveinfo.start_angles = e->s.angles;
+            e->moveinfo.end_origin = e->pos2;
+			e->moveinfo.end_angles = e->s.angles;
+            if (e->moveinfo.state == STATE_BOTTOM || e->moveinfo.state == STATE_TOP)
+            {
+                // Velocities for door/button movement are handled in normal
+                // movement routines
+                e->velocity = self->velocity;
+                // Sanity insurance:
+                if (e->moveinfo.state == STATE_BOTTOM)
+					e->s.origin = e->pos1;
+                else
+				e->s.origin = e->pos2;
+            }
+        }
+
+        if (amove[YAW])
+        {
+            // Cross fingers here... move bounding boxes of doors and buttons
+            if ((!stricmp(e->classname, "func_door")) ||
+                    (!stricmp(e->classname, "func_button")) ||
+                    (e->solid == SOLID_TRIGGER))
+            {
+                float		ca, sa, yaw;
+                vec3_t		p00, p01, p10, p11;
+
+                // Adjust bounding box for yaw
+                yaw = e->s.angles[YAW] * PIf / 180.;
+                ca = cos(yaw);
+                sa = sin(yaw);
+                p00[0] = e->org_mins[0] * ca - e->org_mins[1] * sa;
+                p00[1] = e->org_mins[1] * ca + e->org_mins[0] * sa;
+                p01[0] = e->org_mins[0] * ca - e->org_maxs[1] * sa;
+                p01[1] = e->org_maxs[1] * ca + e->org_mins[0] * sa;
+                p10[0] = e->org_maxs[0] * ca - e->org_mins[1] * sa;
+                p10[1] = e->org_mins[1] * ca + e->org_maxs[0] * sa;
+                p11[0] = e->org_maxs[0] * ca - e->org_maxs[1] * sa;
+                p11[1] = e->org_maxs[1] * ca + e->org_maxs[0] * sa;
+                e->mins[0] = p00[0];
+                e->mins[0] = min(e->mins[0], p01[0]);
+                e->mins[0] = min(e->mins[0], p10[0]);
+                e->mins[0] = min(e->mins[0], p11[0]);
+                e->mins[1] = p00[1];
+                e->mins[1] = min(e->mins[1], p01[1]);
+                e->mins[1] = min(e->mins[1], p10[1]);
+                e->mins[1] = min(e->mins[1], p11[1]);
+                e->maxs[0] = p00[0];
+                e->maxs[0] = max(e->maxs[0], p01[0]);
+                e->maxs[0] = max(e->maxs[0], p10[0]);
+                e->maxs[0] = max(e->maxs[0], p11[0]);
+                e->maxs[1] = p00[1];
+                e->maxs[1] = max(e->maxs[1], p01[1]);
+                e->maxs[1] = max(e->maxs[1], p10[1]);
+                e->maxs[1] = max(e->maxs[1], p11[1]);
+            }
+        }
+
+        e->s.event = self->s.event;
+        gi.linkentity(e);
+        parent = e;
+        e = e->movewith_next;
+    }
+}
+
+
+void movewith_update(edict_t *self)
+{
+    if (self->moveinfo.state == STATE_BOTTOM)
+    {
+		self->pos1 = self->s.origin;
+        self->pos2 = self->pos1 + (self->movedir * self->moveinfo.distance);
+    }
+    else if (self->moveinfo.state == STATE_TOP)
+    {
+        self->pos2 = self->s.origin;
+		self->pos1 = self->pos2 + (self->movedir * -self->moveinfo.distance);
+     }
+	 self->moveinfo.start_origin = self->pos1;
+	 self->moveinfo.end_origin = self->pos2;
+}
+
 
 // support routine for setting moveinfo sounds
 inline int32_t G_GetMoveinfoSoundIndex(edict_t *self, const char *default_value, const char *wanted_value)
@@ -2107,11 +2324,6 @@ void SP_func_water(edict_t *self)
 
 	gi.linkentity(self);
 }
-
-constexpr spawnflags_t SPAWNFLAG_TRAIN_TOGGLE = 2_spawnflag;
-constexpr spawnflags_t SPAWNFLAG_TRAIN_BLOCK_STOPS = 4_spawnflag;
-constexpr spawnflags_t SPAWNFLAG_TRAIN_FIX_OFFSET = 16_spawnflag;
-constexpr spawnflags_t SPAWNFLAG_TRAIN_USE_ORIGIN = 32_spawnflag;
 
 /*QUAKED func_train (0 .5 .8) ? START_ON TOGGLE BLOCK_STOPS MOVE_TEAMCHAIN FIX_OFFSET USE_ORIGIN
 Trains are moving platforms that players can ride.

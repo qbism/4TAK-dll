@@ -2615,10 +2615,11 @@ void ClientUserinfoChanged(edict_t *ent, const char *userinfo)
 	// ZOID
 
 	// [Kex] netname is used for a couple of other things, so we update this after those.
+/* qb: currently not decoding
 	if ( ( ent->svflags & SVF_BOT ) == 0 ) {
 		Q_strlcpy( ent->client->pers.netname, G_EncodedPlayerName( ent ).c_str(), sizeof( ent->client->pers.netname ) );
 	}
-
+*/
 	// fov
 	gi.Info_ValueForKey(userinfo, "fov", val, sizeof(val));
 	ent->client->ps.fov = clamp((float) atoi(val), 1.f, 160.f);

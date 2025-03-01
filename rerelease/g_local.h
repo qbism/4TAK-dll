@@ -818,7 +818,7 @@ enum ent_flags_t : uint64_t {
 	FL_TRAP					= bit_v<32>, // entity is a trap of some kind
 	FL_TRAP_LASER_FIELD		= bit_v<33>, // enough of a special case to get it's own flag...
 	FL_IMMORTAL             = bit_v<34>, // never go below 1hp
-	FL_PUSHABLE             = bit_v<35>  // qb: moves right off ledges, like barrels
+	FL_PUSHABLE             = bit_v<35>  // qb: movable off ledges, like barrels
 };
 MAKE_ENUM_BITFLAGS( ent_flags_t );
 
@@ -2162,11 +2162,17 @@ edict_t *plat_spawn_inside_trigger(edict_t *ent);
 void	 Move_Calc(edict_t *ent, const vec3_t &dest, void(*endfunc)(edict_t *self));
 void G_SetMoveinfoSounds(edict_t *self, const char *default_start, const char *default_mid, const char *default_end);
 
+//qb: move train spawnflags to one place 
 constexpr spawnflags_t SPAWNFLAG_TRAIN_START_ON = 1_spawnflag;
+constexpr spawnflags_t SPAWNFLAG_TRAIN_TOGGLE = 2_spawnflag;
+constexpr spawnflags_t SPAWNFLAG_TRAIN_BLOCK_STOPS = 4_spawnflag;
+constexpr spawnflags_t SPAWNFLAG_TRAIN_MOVE_TEAMCHAIN = 8_spawnflag;
+constexpr spawnflags_t SPAWNFLAG_TRAIN_FIX_OFFSET = 16_spawnflag;
+constexpr spawnflags_t SPAWNFLAG_TRAIN_USE_ORIGIN = 32_spawnflag;
+
 
 constexpr spawnflags_t SPAWNFLAG_WATER_SMART = 2_spawnflag;
 
-constexpr spawnflags_t SPAWNFLAG_TRAIN_MOVE_TEAMCHAIN = 8_spawnflag;
 
 constexpr spawnflags_t SPAWNFLAG_DOOR_REVERSE = 2_spawnflag;
 
@@ -3234,6 +3240,17 @@ struct edict_t
 	mod_t	lastMOD;
 	const char	*style_on, *style_off;
 	uint32_t crosslevel_flags;
+
+//qb: Lazarus
+	edict_t		*movewith_next;
+    edict_t		*movewith;
+    edict_t		*movewith_ent;
+    vec3_t		movewith_offset;
+    vec3_t		parent_attach_angles;
+	vec3_t		org_mins, org_maxs, org_size;
+    vec3_t		org_angles;
+
+
 	// NOTE: if adding new elements, make sure to add them
 	// in g_save.cpp too!
 };

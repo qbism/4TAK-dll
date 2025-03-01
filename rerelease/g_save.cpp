@@ -1071,6 +1071,18 @@ SAVE_STRUCT_START
 	FIELD_AUTO(item),
 	FIELD_AUTO(crosslevel_flags),
 
+	//qb: Lazarus
+	FIELD_AUTO(movewith_next),
+    FIELD_AUTO(movewith),
+    FIELD_AUTO(movewith_ent),
+    FIELD_AUTO(movewith_offset),
+    FIELD_AUTO(parent_attach_angles),
+    FIELD_AUTO(org_mins),
+    FIELD_AUTO(org_maxs),
+    FIELD_AUTO(org_size),
+    FIELD_AUTO(org_angles),
+
+
 	// moveinfo_t
 	FIELD_AUTO(moveinfo.start_origin),
 	FIELD_AUTO(moveinfo.start_angles),

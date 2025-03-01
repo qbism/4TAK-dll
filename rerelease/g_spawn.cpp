@@ -456,6 +456,11 @@ void ED_CallSpawn(edict_t *ent)
 		return;
 	}
 
+	//qb: Lazarus: Preserve original angles for movewith stuff
+	//          before G_SetMoveDir wipes 'em out
+	ent->org_angles = ent->s.angles;
+
+
 	// PGM - do this before calling the spawn function so it can be overridden.
 	ent->gravityVector[0] = 0.0;
 	ent->gravityVector[1] = 0.0;

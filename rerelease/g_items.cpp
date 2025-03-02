@@ -1138,8 +1138,14 @@ THINK(droptofloor) (edict_t *ent) -> void
 		gi.setmodel(ent, ent->model);
 	else
 		gi.setmodel(ent, ent->item->world_model);
+		
 	ent->solid = SOLID_TRIGGER;
-	ent->movetype = MOVETYPE_TOSS;
+    if (ent->movewith)
+        ent->movetype = MOVETYPE_PUSH;
+    else
+        ent->movetype = MOVETYPE_TOSS;
+
+    ent->touch = Touch_Item;
 	ent->touch = Touch_Item;
 
 	dest = ent->s.origin + vec3_t { 0, 0, -128 };

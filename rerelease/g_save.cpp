@@ -1073,7 +1073,7 @@ SAVE_STRUCT_START
 
 	//qb: Lazarus
 	FIELD_AUTO(movewith_next),
-    FIELD_AUTO(movewith),
+    FIELD_LEVEL_STRING(movewith),
     FIELD_AUTO(movewith_ent),
     FIELD_AUTO(movewith_offset),
     FIELD_AUTO(parent_attach_angles),
@@ -1081,6 +1081,7 @@ SAVE_STRUCT_START
     FIELD_AUTO(org_maxs),
     FIELD_AUTO(org_size),
     FIELD_AUTO(org_angles),
+	FIELD_AUTO(org_movetype),
 
 
 	// moveinfo_t

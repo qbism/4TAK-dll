@@ -2075,3 +2075,112 @@ void SP_target_story(edict_t *self)
 
 	self->use = use_target_story;
 }
+
+//qb: Lazarus movewith
+
+/*====================================================================================
+   TARGET_MOVEWITH - sets an entity to "movewith" it's pathtarget (or remove
+   that setting if DETACH (=1) is set)
+======================================================================================*/
+constexpr spawnflags_t SPAWNFLAG_DETATCH = 1_spawnflag;
+
+void movewith_detach (edict_t *child)
+{
+	edict_t	*e;
+	edict_t	*parent=NULL;
+	int		i;
+
+	for(i=1; i<globals.num_edicts && !parent; i++) {
+		e = g_edicts + i;
+		if(e->movewith_next == child) parent=e;
+	}
+	if(parent) parent->movewith_next = child->movewith_next;
+
+	child->movewith_next = NULL;
+	child->movewith = NULL;
+	child->movetype = child->org_movetype;
+	// if monster, give 'em a small vertical boost
+	if(child->svflags & SVF_MONSTER)
+		child->s.origin[2] += 2;
+	gi.linkentity(child);
+}
+
+void use_target_movewith (edict_t *self, edict_t *other, edict_t *activator)
+{
+	edict_t	*target;
+
+	if(!self->target)
+		return;
+	target = G_FindByString<&edict_t::targetname>(nullptr, self->target);
+
+	if(self->spawnflags.has(SPAWNFLAG_DETATCH))
+	{
+		// Detach
+		while(target)
+		{
+			if(target->movewith_ent)
+				movewith_detach(target);
+			target = G_FindByString<&edict_t::targetname>(nullptr, self->target);
+		}
+	} else {
+		// Attach
+		edict_t	*parent;
+		edict_t	*e;
+		edict_t	*previous;
+
+		parent = G_FindByString<&edict_t::targetname>(nullptr, self->pathtarget);
+		if(!parent || !parent->inuse)
+			return;
+		while(target)
+		{
+			if(!target->movewith_ent || (target->movewith_ent != parent) )
+			{
+				if(target->movewith_ent)
+					movewith_detach(target);
+
+				target->movewith_ent = parent;
+				target->parent_attach_angles = parent->s.angles;
+				if(target->org_movetype < 0)
+					target->org_movetype = target->movetype;
+				if(target->movetype != MOVETYPE_NONE)
+					target->movetype = MOVETYPE_PUSH;
+				target->org_mins = target->mins;
+				target->org_maxs = target->maxs;
+				target->movewith_offset = target->s.origin - parent->s.origin;
+				e = parent->movewith_next;
+				previous = parent;
+				while(e)
+				{
+					previous = e;
+					e = previous->movewith_next;
+				}
+				previous->movewith_next = target;
+				gi.linkentity(target);
+			}
+			target = G_FindByString<&edict_t::targetname>(nullptr, self->target);
+		}
+	}
+
+	self->count--;
+	if(!self->count) {
+		self->think = G_FreeEdict;
+		self->nextthink = level.time + 10_hz;
+	}
+}
+
+void SP_target_movewith (edict_t *self)
+{
+	if(!self->target)
+	{
+		gi.Com_Print("target_movewith with no target\n");
+		G_FreeEdict(self);
+		return;
+	}
+	if(!(self->spawnflags.has(SPAWNFLAG_DETATCH) && !self->pathtarget))
+	{
+		gi.Com_Print("target_movewith w/o DETACH and no pathtarget\n");
+		G_FreeEdict(self);
+		return;
+	}
+	self->use = use_target_movewith;
+}

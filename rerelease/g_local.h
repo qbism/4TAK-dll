@@ -2088,6 +2088,7 @@ void G_PlayerNotifyGoal(edict_t *player);
 //
 void  ED_CallSpawn(edict_t *ent);
 char *ED_NewString(char *string);
+void movewith_init(edict_t *ent);
 
 //
 // g_target.c
@@ -2169,6 +2170,7 @@ constexpr spawnflags_t SPAWNFLAG_TRAIN_BLOCK_STOPS = 4_spawnflag;
 constexpr spawnflags_t SPAWNFLAG_TRAIN_MOVE_TEAMCHAIN = 8_spawnflag;
 constexpr spawnflags_t SPAWNFLAG_TRAIN_FIX_OFFSET = 16_spawnflag;
 constexpr spawnflags_t SPAWNFLAG_TRAIN_USE_ORIGIN = 32_spawnflag;
+constexpr spawnflags_t SPAWNFLAG_TRAIN_ROTATE= 64_spawnflag;
 
 
 constexpr spawnflags_t SPAWNFLAG_WATER_SMART = 2_spawnflag;
@@ -3243,12 +3245,13 @@ struct edict_t
 
 //qb: Lazarus
 	edict_t		*movewith_next;
-    edict_t		*movewith;
+    const char	*movewith;
     edict_t		*movewith_ent;
     vec3_t		movewith_offset;
     vec3_t		parent_attach_angles;
 	vec3_t		org_mins, org_maxs, org_size;
     vec3_t		org_angles;
+	movetype_t	org_movetype;
 
 
 	// NOTE: if adding new elements, make sure to add them

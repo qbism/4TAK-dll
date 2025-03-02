@@ -1155,7 +1155,7 @@ void SpawnEntities(const char *mapname, const char *entities, const char *spawnp
 	cached_imageindex::clear_all();
 
 	edict_t *ent;
-	int		 inhibit;
+	int		 inhibit, i;
 	const char	 *com_token;
 
 	int skill_level = clamp(skill->integer, 0, 3);
@@ -1251,6 +1251,27 @@ void SpawnEntities(const char *mapname, const char *entities, const char *spawnp
 	G_PrecacheInventoryItems();
 
 	G_FindTeams();
+
+	for(i=1, ent=g_edicts+i; i < globals.num_edicts; i++, ent++)
+	{
+		if(!ent->movewith)
+			continue;
+		if(ent->movewith_ent)
+			continue;
+		ent->movewith_ent = G_FindByString<&edict_t::targetname>(ent->movewith_ent, ent->movewith);
+		// Make sure that we can really "movewith" this guy. This check
+		// allows us to have movewith parent with same targetname as
+		// other entities
+		while(ent->movewith_ent &&
+			(stricmp(ent->movewith_ent->classname,"func_train")     &&
+			 stricmp(ent->movewith_ent->classname,"model_train")    &&
+			 stricmp(ent->movewith_ent->classname,"func_door")      &&
+			 stricmp(ent->movewith_ent->classname,"func_vehicle")   &&
+			 stricmp(ent->movewith_ent->classname,"func_tracktrain")  ))
+			 ent->movewith_ent = G_FindByString<&edict_t::targetname>(ent->movewith_ent, ent->movewith);
+		if(ent->movewith_ent)
+			movewith_init(ent->movewith_ent);
+	}
 
 	// ZOID
 	CTFSpawn();

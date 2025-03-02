@@ -2093,6 +2093,7 @@ void SP_misc_teleporter(edict_t *ent)
 	trig->solid = SOLID_TRIGGER;
 	trig->target = ent->target;
 	trig->owner = ent;
+	trig->movewith = ent->movewith;
 	trig->s.origin = ent->s.origin;
 	trig->mins = { -8, -8, 8 };
 	trig->maxs = { 8, 8, 24 };

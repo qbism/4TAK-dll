@@ -295,7 +295,13 @@ void G_SetMoveinfoSounds(edict_t *self, const char *default_start, const char *d
 THINK(Move_Done) (edict_t *ent) -> void
 {
 	ent->velocity = {};
+
+	if(ent->movewith)
+	ent->velocity = ent->movewith_ent->velocity;
+if(ent->moveinfo.endfunc)
 	ent->moveinfo.endfunc(ent);
+if(ent->movewith_next && (ent->movewith_next->movewith_ent == ent))
+	set_child_movement(ent);	
 }
 
 THINK(Move_Final) (edict_t *ent) -> void
@@ -308,9 +314,12 @@ THINK(Move_Final) (edict_t *ent) -> void
 
 	// [Paril-KEX] use exact remaining distance
 	ent->velocity = (ent->moveinfo.dest - ent->s.origin) * (1.f / gi.frame_time_s);
-
+    if(ent->movewith)
+		ent->velocity = ent->movewith_ent->velocity + ent->velocity;
 	ent->think = Move_Done;
 	ent->nextthink = level.time + FRAME_TIME_S;
+	if(ent->movewith_next && (ent->movewith_next->movewith_ent == ent))
+		set_child_movement(ent);
 }
 
 THINK(Move_Begin) (edict_t *ent) -> void
@@ -323,11 +332,41 @@ THINK(Move_Begin) (edict_t *ent) -> void
 		return;
 	}
 	ent->velocity = ent->moveinfo.dir * ent->moveinfo.speed;
-	frames = floor((ent->moveinfo.remaining_distance / ent->moveinfo.speed) / gi.frame_time_s);
-	ent->moveinfo.remaining_distance -= frames * ent->moveinfo.speed * gi.frame_time_s;
-	ent->nextthink = level.time + (FRAME_TIME_S * frames);
-	ent->think = Move_Final;
+    if (ent->movewith)
+    {
+        ent->velocity = ent->movewith_ent->velocity + ent->velocity;
+        ent->moveinfo.remaining_distance -= ent->moveinfo.speed * gi.frame_time_s;
+        ent->nextthink = level.time + (FRAME_TIME_S * frames);
+        ent->think = Move_Begin;
+    }
+
+    else
+    {
+        //if func_train is moving toward a moving path_corner
+        if (!strcmp(ent->classname, "func_train") && ent->target_ent->movewith)
+        {
+            vec3_t		dest;
+            dest = ent->target_ent->s.origin - ent->mins; 
+            ent->moveinfo.start_origin = ent->s.origin;
+            ent->moveinfo.end_origin = dest;
+            ent->moveinfo.dir = dest - ent->s.origin;
+            ent->moveinfo.remaining_distance = ent->moveinfo.dir.normalize();
+            ent->velocity = ent->moveinfo.dir * ent->moveinfo.speed; 
+            ent->nextthink = level.time + FRAME_TIME_S;
+            ent->think = Move_Begin;
+        }
+        else
+        {
+			frames = floor((ent->moveinfo.remaining_distance / ent->moveinfo.speed) / gi.frame_time_s);
+			ent->moveinfo.remaining_distance -= frames * ent->moveinfo.speed * gi.frame_time_s;
+			ent->nextthink = level.time + (FRAME_TIME_S * frames);
+			ent->think = Move_Final;
+        }
+    }
+    if (ent->movewith_next && (ent->movewith_next->movewith_ent == ent))
+        set_child_movement(ent);
 }
+
 
 void Think_AccelMove_New(edict_t *ent);
 void Think_AccelMove(edict_t *ent);
@@ -341,6 +380,10 @@ constexpr float AccelerationDistance(float target, float rate)
 inline void Move_Regular(edict_t *ent, const vec3_t &dest, void(*endfunc)(edict_t *self))
 {
 	if (level.current_entity == ((ent->flags & FL_TEAMSLAVE) ? ent->teammaster : ent))
+	{
+		Move_Begin(ent);
+	}
+	else if (ent->movewith)
 	{
 		Move_Begin(ent);
 	}
@@ -453,7 +496,11 @@ THINK(Think_AccelMove_New) (edict_t *ent) -> void
 	ent->moveinfo.num_frames_done++;
 	vec3_t target_pos = ent->moveinfo.curve_ref + (ent->moveinfo.dir * target_dist);
 	ent->velocity = (target_pos - ent->s.origin) * (1.f / gi.frame_time_s);
+    if (ent->movewith)
+		ent->velocity = ent->movewith_ent->velocity + ent->velocity;
 	ent->nextthink = level.time + FRAME_TIME_S;
+	if (ent->movewith_next && (ent->movewith_next->movewith_ent == ent))
+		set_child_movement(ent);
 }
 
 //
@@ -904,7 +951,7 @@ edict_t *plat_spawn_inside_trigger(edict_t *ent)
 	trigger->maxs = tmax;
 
 	gi.linkentity(trigger);
-
+	trigger->movewith = ent->movewith;
 	return trigger; // PGM 11/17/97
 }
 
@@ -1264,6 +1311,28 @@ When a button is touched, it moves some distance in the direction of it's angle,
 5) in-out
 */
 
+
+MOVEINFO_BLOCKED(train_blocked) (edict_t *self, edict_t *other) -> void
+{
+	if (!(other->svflags & SVF_MONSTER) && (!other->client))
+	{
+		// give it a chance to go away on it's own terms (like gibs)
+		T_Damage(other, self, self, vec3_origin, other->s.origin, vec3_origin, 100000, 1, DAMAGE_NONE, MOD_CRUSH);
+		// if it's still there, nuke it
+		if (other && other->inuse && other->solid)
+			BecomeExplosion1(other);
+		return;
+	}
+
+	if (level.time < self->touch_debounce_time)
+		return;
+
+	if (!self->dmg)
+		return;
+	self->touch_debounce_time = level.time + 500_ms;
+	T_Damage(other, self, self, vec3_origin, other->s.origin, vec3_origin, self->dmg, 1, DAMAGE_NONE, MOD_CRUSH);
+}
+
 MOVEINFO_ENDFUNC(button_done) (edict_t *self) -> void
 {
 	self->moveinfo.state = STATE_BOTTOM;
@@ -1281,8 +1350,12 @@ MOVEINFO_ENDFUNC(button_done) (edict_t *self) -> void
 
 THINK(button_return) (edict_t *self) -> void
 {
-	self->moveinfo.state = STATE_DOWN;
+    if (self->movewith)
+	{
+        movewith_update(self);
+	}
 
+	self->moveinfo.state = STATE_DOWN;
 	Move_Calc(self, self->moveinfo.start_origin, button_done);
 
 	if (self->health)
@@ -1317,6 +1390,11 @@ void button_fire(edict_t *self)
 {
 	if (self->moveinfo.state == STATE_UP || self->moveinfo.state == STATE_TOP)
 		return;
+
+    if (self->movewith)
+	{
+        movewith_update(self);
+	}
 
 	self->moveinfo.state = STATE_UP;
 	if (self->moveinfo.sound_start && !(self->flags & FL_TEAMSLAVE))
@@ -1356,7 +1434,14 @@ void SP_func_button(edict_t *ent)
 	float  dist;
 
 	G_SetMovedir(ent->s.angles, ent->movedir);
-	ent->movetype = MOVETYPE_STOP;
+    if (ent->movewith)
+    {
+        ent->movetype = MOVETYPE_PUSH;
+        ent->moveinfo.blocked = train_blocked;
+    }
+    else
+		ent->movetype = MOVETYPE_STOP;
+
 	ent->solid = SOLID_BSP;
 	gi.setmodel(ent, ent->model);
 
@@ -1411,6 +1496,40 @@ void SP_func_button(edict_t *ent)
 
 	gi.linkentity(ent);
 }
+
+void movewith_init(edict_t *ent)
+{
+    edict_t *e, *child;
+
+    // Unnamed entities can't be movewith parents
+    if (!ent->targetname)
+	{
+        return;
+	}
+
+	child = G_FindByString<&edict_t::movewith>(nullptr, ent->targetname);
+    e = ent;
+    while (child)
+    {
+        child->movewith_ent = ent;
+        // Copy parent's current angles to the child. They SHOULD be 0,0,0 at this point
+        // for all currently supported parents, but ya never know.
+        child->parent_attach_angles = ent->s.angles;
+        if(child->org_movetype < 0)
+            child->org_movetype = child->movetype;
+        if (child->movetype != MOVETYPE_NONE)
+            child->movetype = MOVETYPE_PUSH;
+			child->org_mins = child->mins;
+			child->org_maxs = child->maxs;
+        child->movewith_offset = child->s.origin - ent->s.origin;
+        e->movewith_next = child;
+        e = child;
+        child = G_FindByString<&edict_t::movewith>(nullptr, ent->targetname);
+    }
+}
+
+//qb: maybe add Lazarus trainbuttons in future
+
 
 /*
 ======================================================================
@@ -1545,7 +1664,9 @@ THINK(door_go_down) (edict_t *self) -> void
 		self->takedamage = true;
 		self->health = self->max_health;
 	}
-
+	if (self->movewith)
+		movewith_update(self);
+	
 	self->moveinfo.state = STATE_DOWN;
 	if (strcmp(self->classname, "func_door") == 0 ||
 		strcmp(self->classname, "func_water") == 0 ||
@@ -1578,7 +1699,11 @@ void door_go_up(edict_t *self, edict_t *activator)
 
 	self->s.sound = self->moveinfo.sound_middle;
 
-	self->moveinfo.state = STATE_UP;
+	if (self->movewith)
+	{
+		movewith_update(self);
+	}
+		self->moveinfo.state = STATE_UP;
 	if (strcmp(self->classname, "func_door") == 0 ||
 		strcmp(self->classname, "func_water") == 0 ||
 		strcmp(self->classname, "func_door_secret") == 0)
@@ -1817,11 +1942,18 @@ THINK(Think_SpawnDoorTrigger) (edict_t *ent) -> void
 	}
 
 	// expand
-	mins[0] -= 60;
-	mins[1] -= 60;
-	maxs[0] += 60;
-	maxs[1] += 60;
-
+	if (ent->movewith)
+	{
+		mins[0] -= 16;
+		mins[1] -= 16;
+		maxs[0] += 16;
+		maxs[1] += 16;		
+	} else {
+		mins[0] -= 60;
+		mins[1] -= 60;
+		maxs[0] += 60;
+		maxs[1] += 60;
+	}
 	other = G_Spawn();
 	other->mins = mins;
 	other->maxs = maxs;
@@ -1830,6 +1962,19 @@ THINK(Think_SpawnDoorTrigger) (edict_t *ent) -> void
 	other->movetype = MOVETYPE_NONE;
 	other->touch = Touch_DoorTrigger;
 	gi.linkentity(other);
+
+    if (ent->movewith)
+    {
+        other->movewith = ent->movewith;
+        other->s.origin = ent->s.origin;
+        other->mins = other->mins - other->s.origin;
+        other->maxs = other->maxs - other->s.origin;
+        if (ent->movewith_ent)
+        {
+            // Uh-oh... movewith_init was already called.. no harm in calling it again
+            movewith_init(ent->movewith_ent);
+        }
+    }
 
 	Think_CalcMoveSpeed(ent);
 }
@@ -2336,28 +2481,10 @@ noise	looping sound to play when the train is in motion
 
 To have other entities move with the train, set all the piece's team value to the same thing. They will move in unison.
 */
+
+//qb:  maybe add Lazarus train_rotating, train_spline, and/or train_die in future
+
 void train_next(edict_t *self);
-
-MOVEINFO_BLOCKED(train_blocked) (edict_t *self, edict_t *other) -> void
-{
-	if (!(other->svflags & SVF_MONSTER) && (!other->client))
-	{
-		// give it a chance to go away on it's own terms (like gibs)
-		T_Damage(other, self, self, vec3_origin, other->s.origin, vec3_origin, 100000, 1, DAMAGE_NONE, MOD_CRUSH);
-		// if it's still there, nuke it
-		if (other && other->inuse && other->solid)
-			BecomeExplosion1(other);
-		return;
-	}
-
-	if (level.time < self->touch_debounce_time)
-		return;
-
-	if (!self->dmg)
-		return;
-	self->touch_debounce_time = level.time + 500_ms;
-	T_Damage(other, self, self, vec3_origin, other->s.origin, vec3_origin, self->dmg, 1, DAMAGE_NONE, MOD_CRUSH);
-}
 
 MOVEINFO_ENDFUNC(train_wait) (edict_t *self) -> void
 {
@@ -2460,6 +2587,8 @@ again:
 		self->s.old_origin = self->s.origin;
 		self->s.event = EV_OTHER_TELEPORT;
 		gi.linkentity(self);
+        if(self->movewith_next && (self->movewith_next->movewith_ent == self))
+            set_child_movement(self);
 		goto again;
 	}
 

@@ -346,6 +346,15 @@ bool SV_Push(edict_t *pusher, vec3_t &move, vec3_t &amove)
 			if (check->groundentity != pusher)
 				check->groundentity = nullptr;
 
+            // Lazarus - don't block movewith trains with a rider - they may end up
+            //           being stuck, but that beats a small pitch or roll causing
+            //           blocked trains/gibbed monsters
+            if (check->movewith_ent == pusher)
+            {
+                gi.linkentity (check);
+                continue;
+            }
+			
 			block = SV_TestEntityPosition(check);
 
 			// [Paril-KEX] this is a bit of a hack; allow dead player skulls

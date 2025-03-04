@@ -82,6 +82,8 @@ void SP_target_sky(edict_t *self); // [Paril-KEX]
 void SP_target_achievement(edict_t *self); // [Paril-KEX]
 void SP_target_story(edict_t *self); // [Paril-KEX]
 
+void SP_target_movewith (edict_t *self); //qb: Lazarus
+
 void SP_worldspawn(edict_t *ent);
 
 void SP_dynamic_light(edict_t* self);
@@ -291,6 +293,8 @@ static const std::initializer_list<spawn_t> spawns = {
 	{ "target_sky", SP_target_sky }, // [Paril-KEX]
 	{ "target_achievement", SP_target_achievement }, // [Paril-KEX]
 	{ "target_story", SP_target_story }, // [Paril-KEX]
+
+	{ "target_movewith", SP_target_movewith }, //qb: Lazarus
 
 	{ "worldspawn", SP_worldspawn },
 

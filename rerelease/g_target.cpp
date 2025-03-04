@@ -2105,7 +2105,7 @@ void movewith_detach (edict_t *child)
 	gi.linkentity(child);
 }
 
-void use_target_movewith (edict_t *self, edict_t *other, edict_t *activator)
+USE (use_target_movewith) (edict_t *self, edict_t *other, edict_t *activator) -> void
 {
 	edict_t	*target;
 
@@ -2120,7 +2120,7 @@ void use_target_movewith (edict_t *self, edict_t *other, edict_t *activator)
 		{
 			if(target->movewith_ent)
 				movewith_detach(target);
-			target = G_FindByString<&edict_t::targetname>(nullptr, self->target);
+			target = G_FindByString<&edict_t::targetname>(target, self->target);
 		}
 	} else {
 		// Attach
@@ -2157,14 +2157,14 @@ void use_target_movewith (edict_t *self, edict_t *other, edict_t *activator)
 				previous->movewith_next = target;
 				gi.linkentity(target);
 			}
-			target = G_FindByString<&edict_t::targetname>(nullptr, self->target);
+			target = G_FindByString<&edict_t::targetname>(target, self->target);
 		}
 	}
 
 	self->count--;
 	if(!self->count) {
 		self->think = G_FreeEdict;
-		self->nextthink = level.time + 10_hz;
+		self->nextthink = level.time + 1_ms;
 	}
 }
 
@@ -2176,7 +2176,8 @@ void SP_target_movewith (edict_t *self)
 		G_FreeEdict(self);
 		return;
 	}
-	if(!(self->spawnflags.has(SPAWNFLAG_DETATCH) && !self->pathtarget))
+	
+	if(!(self->spawnflags.has(SPAWNFLAG_DETATCH)) && !self->pathtarget)
 	{
 		gi.Com_Print("target_movewith w/o DETACH and no pathtarget\n");
 		G_FreeEdict(self);

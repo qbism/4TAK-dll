@@ -82,6 +82,8 @@ void SP_target_sky(edict_t *self); // [Paril-KEX]
 void SP_target_achievement(edict_t *self); // [Paril-KEX]
 void SP_target_story(edict_t *self); // [Paril-KEX]
 
+void SP_target_movewith (edict_t *self); //qb: Lazarus
+
 void SP_worldspawn(edict_t *ent);
 
 void SP_dynamic_light(edict_t* self);
@@ -291,6 +293,8 @@ static const std::initializer_list<spawn_t> spawns = {
 	{ "target_sky", SP_target_sky }, // [Paril-KEX]
 	{ "target_achievement", SP_target_achievement }, // [Paril-KEX]
 	{ "target_story", SP_target_story }, // [Paril-KEX]
+
+	{ "target_movewith", SP_target_movewith }, //qb: Lazarus
 
 	{ "worldspawn", SP_worldspawn },
 
@@ -1263,11 +1267,11 @@ void SpawnEntities(const char *mapname, const char *entities, const char *spawnp
 		// allows us to have movewith parent with same targetname as
 		// other entities
 		while(ent->movewith_ent &&
-			(stricmp(ent->movewith_ent->classname,"func_train")     &&
-			 stricmp(ent->movewith_ent->classname,"model_train")    &&
-			 stricmp(ent->movewith_ent->classname,"func_door")      &&
-			 stricmp(ent->movewith_ent->classname,"func_vehicle")   &&
-			 stricmp(ent->movewith_ent->classname,"func_tracktrain")  ))
+			(strcmp(ent->movewith_ent->classname,"func_train")     &&
+			 strcmp(ent->movewith_ent->classname,"model_train")    &&
+			 strcmp(ent->movewith_ent->classname,"func_door")      &&
+			 strcmp(ent->movewith_ent->classname,"func_vehicle")   &&
+			 strcmp(ent->movewith_ent->classname,"func_tracktrain")  ))
 			 ent->movewith_ent = G_FindByString<&edict_t::targetname>(ent->movewith_ent, ent->movewith);
 		if(ent->movewith_ent)
 			movewith_init(ent->movewith_ent);

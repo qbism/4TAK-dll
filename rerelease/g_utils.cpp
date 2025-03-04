@@ -381,6 +381,22 @@ THINK(G_FreeEdict) (edict_t *ed) -> void
 	// already freed
 	if (!ed->inuse)
 		return;
+		
+    // Lazarus - if part of a movewith chain, remove from
+    // the chain and repair broken links
+    if(ed->movewith)
+    {
+        edict_t	*e;
+        edict_t	*parent=NULL;
+        int		i;
+
+        for(i=1; i<globals.num_edicts && !parent; i++)
+        {
+            e = g_edicts + i;
+            if(e->movewith_next == ed) parent=e;
+        }
+        if(parent) parent->movewith_next = ed->movewith_next;
+    }
 
 	gi.unlinkentity(ed); // unlink from world
 

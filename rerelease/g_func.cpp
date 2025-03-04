@@ -95,12 +95,13 @@ restart:
             is_monster = false;
 
         // For all but func_button and func_door, move origin and match velocities
-        if (stricmp(e->classname, "func_door") && stricmp(e->classname, "func_button"))
+        if (strcmp(e->classname, "func_door") && strcmp(e->classname, "func_button"))
         {
 
 			e->s.origin = self->s.origin + (forward * e->movewith_offset[0]);
 			e->s.origin = e->s.origin + (right * e->movewith_offset[1]);
 			e->s.origin = e->s.origin + (up * e->movewith_offset[2]);
+			e->velocity = self->velocity;
          }
 
         // If parent is spinning, add appropriate velocities
@@ -121,28 +122,38 @@ restart:
             e->velocity[2] += offset[1] * self->avelocity[ROLL] * PIf / 180;
         }
 
-        amove = (self->avelocity * SERVER_TICK_RATE);
+        amove = (self->avelocity * gi.frame_time_s);
 
         // Match angular velocities
-        if (!stricmp(e->classname, "func_rotating")) {
+        if (!strcmp(e->classname, "func_rotating"))
+		{
             float cy, sy;
             cy = cos((e->s.angles[1] - delta_angles[1]) * PIf / 180);
             sy = sin((e->s.angles[1] - delta_angles[1]) * PIf / 180);
             if (e->movedir[0] > 0) {
                 e->s.angles[1] = delta_angles[1];
-            } else if (e->movedir[1] > 0) {
+            }
+			else if (e->movedir[1] > 0) 
+			{
                 e->s.angles[1] += amove[1];
                 e->s.angles[2] = delta_angles[2] * cy;
                 e->s.angles[0] = -delta_angles[2] * sy;
-            } else if (e->movedir[2] > 0) {
+            } 
+			else if (e->movedir[2] > 0) 
+			{
                 e->s.angles[1] = delta_angles[0] * -sy;
             }
-        } else if (!is_monster) {
+        } 
+		else if (!is_monster) 
+		{
             // Not a monster/actor. We want monsters/actors to be able to turn on
             // their own.
-            if (!stricmp(e->classname, "turret_breach") || !stricmp(e->classname, "turret_base")) {
+            if (!strcmp(e->classname, "turret_breach") || !strcmp(e->classname, "turret_base"))
+			{
                 e->avelocity = self->avelocity;
-            } else if (!stricmp(e->classname, "func_door_rotating")) {
+            } 
+			else if (!strcmp(e->classname, "func_door_rotating")) 
+			{
                 e->avelocity = self->avelocity;
                 e->pos1 = delta_angles;
                 e->pos2 = e->pos1 + (e->movedir * e->moveinfo.distance);
@@ -154,12 +165,16 @@ restart:
                 e->moveinfo.start_angles = e->pos1;
                 e->moveinfo.end_origin = e->s.origin;
                 e->moveinfo.end_angles = e->pos2;
-            } else if (e->solid == SOLID_BSP) {
+            } 
+			else if (e->solid == SOLID_BSP) 
+			{
                 // Brush models always start out with angles=0,0,0 (after
                 // G_SetMoveDir). Use more accuracy here
                 e->avelocity = self->avelocity;
 				e->s.angles = delta_angles;
-            } else if (e->movetype == MOVETYPE_NONE) {
+            } 
+			else if (e->movetype == MOVETYPE_NONE) 
+			{
                 e->avelocity = self->avelocity;
                 e->s.angles = delta_angles;
             } else {
@@ -172,8 +187,8 @@ restart:
 
         // Special cases:
         // Func_door/func_button and trigger fields
-        if ((!stricmp(e->classname, "func_door")) ||
-                (!stricmp(e->classname, "func_button")))
+        if ((!strcmp(e->classname, "func_door")) ||
+                (!strcmp(e->classname, "func_button")))
         {
 
             angles = e->s.angles + e->org_angles;
@@ -202,8 +217,8 @@ restart:
         if (amove[YAW])
         {
             // Cross fingers here... move bounding boxes of doors and buttons
-            if ((!stricmp(e->classname, "func_door")) ||
-                    (!stricmp(e->classname, "func_button")) ||
+            if ((!strcmp(e->classname, "func_door")) ||
+                    (!strcmp(e->classname, "func_button")) ||
                     (e->solid == SOLID_TRIGGER))
             {
                 float		ca, sa, yaw;
@@ -336,7 +351,7 @@ THINK(Move_Begin) (edict_t *ent) -> void
     {
         ent->velocity = ent->movewith_ent->velocity + ent->velocity;
         ent->moveinfo.remaining_distance -= ent->moveinfo.speed * gi.frame_time_s;
-        ent->nextthink = level.time + (FRAME_TIME_S * frames);
+        ent->nextthink = level.time + FRAME_TIME_S;
         ent->think = Move_Begin;
     }
 

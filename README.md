@@ -913,7 +913,7 @@ See [Save Games](#save-games).
 
 ### CanSave
 
-This new export now dictates whether the game is saveable or not.
+This new export now dictates whether the game is saveable or not. Used for manual and autosaves, but _not_ when transitioning to another level in the unit.
 
 ### ClientChooseSlot
 

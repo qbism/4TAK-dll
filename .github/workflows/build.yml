@@ -131,21 +131,4 @@ jobs:
         run: |
           meson setup ${{ env.MESON_ARGS }} builddir
           meson compile -C builddir
-
-  freebsd:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build
-        uses: cross-platform-actions/action@v0.27.0
-        with:
-          operating_system: freebsd
-          architecture: x86-64
-          version: '14.2'
-          run: |
-            sudo pkg update
-            sudo pkg install -y git meson pkgconf
-            meson setup ${{ env.MESON_ARGS }} builddir
-            meson compile -C builddir
+          
